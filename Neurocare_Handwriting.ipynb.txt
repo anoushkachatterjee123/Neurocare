@@ -1,0 +1,143 @@
+{
+  "nbformat": 4,
+  "nbformat_minor": 0,
+  "metadata": {
+    "colab": {
+      "provenance": []
+    },
+    "kernelspec": {
+      "name": "python3",
+      "display_name": "Python 3"
+    },
+    "language_info": {
+      "name": "python"
+    }
+  },
+  "cells": [
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/",
+          "height": 106
+        },
+        "id": "lnWHGHyUv_nV",
+        "outputId": "af93192e-a0c8-4703-aeba-ec20a3d2e3ec"
+      },
+      "outputs": [
+        {
+          "output_type": "error",
+          "ename": "IndentationError",
+          "evalue": "unindent does not match any outer indentation level (<tokenize>, line 37)",
+          "traceback": [
+            "\u001b[0;36m  File \u001b[0;32m\"<tokenize>\"\u001b[0;36m, line \u001b[0;32m37\u001b[0m\n\u001b[0;31m    f0, voiced_flag, voiced_probs = librosa.pyin(\u001b[0m\n\u001b[0m    ^\u001b[0m\n\u001b[0;31mIndentationError\u001b[0m\u001b[0;31m:\u001b[0m unindent does not match any outer indentation level\n"
+          ]
+        }
+      ],
+      "source": [
+        "import pandas as pd\n",
+        "import librosa\n",
+        "import numpy as np\n",
+        "from pydub import AudioSegment\n",
+        "from sklearn.model_selection import train_test_split\n",
+        "from sklearn.ensemble import RandomForestClassifier\n",
+        "from sklearn.metrics import classification_report, accuracy_score\n",
+        "from sklearn.preprocessing import StandardScaler\n",
+        "from google.colab import files\n",
+        "uploaded = files.upload()\n",
+        "df=pd.read_csv('Parkinson_disease.csv')\n",
+        "# Drop non-numeric column\n",
+        "X = df.drop(columns=['name', 'status'])\n",
+        "y = df['status']\n",
+        "\n",
+        "# Scale features\n",
+        "scaler = StandardScaler()\n",
+        "X_scaled = scaler.fit_transform(X)\n",
+        "\n",
+        "# Split the dataset\n",
+        "X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.2, random_state=42)\n",
+        "\n",
+        "# Initialize and train the Random Forest model\n",
+        "model = RandomForestClassifier(n_estimators=100, random_state=42)\n",
+        "model.fit(X_train, y_train)\n",
+        "\n",
+        "# Predict on the test set\n",
+        "y_pred = model.predict(X_test)\n",
+        "\n",
+        "accuracy = accuracy_score(y_test, y_pred)\n",
+        "report = classification_report(y_test, y_pred)\n",
+        "\n",
+        "accuracy,report\n",
+        "\n",
+        "def extract_voice_features(audio_file):\n",
+        "       y, sr = librosa.load(audio_file, sr=None)\n",
+        "      f0, voiced_flag, voiced_probs = librosa.pyin(\n",
+        "                       y, fmin=50, fmax=400 )\n",
+        "      f0 = f0[~np.isnan(f0)]\n",
+        "      mean_F0 = np.mean(f0)\n",
+        "      max_F0 = np.max(f0)\n",
+        "      min_F0 = np.min(f0)\n",
+        "\n",
+        "\n",
+        "      jitter_percent = np.mean(np.abs(np.diff(f0))) / mean_F0\n",
+        "      jitter_abs = np.mean(np.abs(np.diff(f0)))\n",
+        "      RAP = np.std(f0[:3]) if len(f0) > 3 else np.std(f0)\n",
+        "     PPQ = np.std(f0[:5]) if len(f0) > 5 else np.std(f0)\n",
+        "       DDP = jitter_abs * 3\n",
+        "\n",
+        "       rms = librosa.feature.rms(y=y)[0]\n",
+        "      shimmer = np.mean(np.abs(np.diff(rms))) / np.mean(rms)\n",
+        "      shimmer_db = 20 * np.log10(np.mean(rms))\n",
+        "       APQ3 = np.std(rms[:3]) if len(rms) > 3 else np.std(rms)\n",
+        "       APQ5 = np.std(rms[:5]) if len(rms) > 5 else np.std(rms)\n",
+        "       APQ = np.std(rms)\n",
+        "       DDA = APQ3 * 3\n",
+        "\n",
+        "       S = librosa.stft(y)\n",
+        "      harm, noise = librosa.decompose.hpss(S)\n",
+        "      harm_audio = librosa.istft(harm)\n",
+        "      noise_audio = librosa.istft(noise)\n",
+        "      HNR = np.mean(harm_audio**2) / (np.mean(noise_audio**2) + 1e-6)\n",
+        "\n",
+        "      # --- Nonlinear features ---\n",
+        "       NHR = np.mean(noise_audio**2) / (np.mean(harm_audio**2) + 1e-6)\n",
+        "      RPDE = np.var(f0)\n",
+        "      DFA = np.mean(np.abs(np.diff(rms)))\n",
+        "\n",
+        "     # --- Additional nonlinear features to match dataset ---\n",
+        "       spread1 = np.mean(np.diff(f0)) if len(f0) > 1 else 0\n",
+        "       spread2 = np.var(np.diff(f0)) if len(f0) > 1 else 0\n",
+        "       D2 = np.std(f0)\n",
+        "       PPE = np.var(np.diff(f0)) / mean_F0\n",
+        "\n",
+        "\n",
+        "     return np.array([ mean_F0, max_F0, min_F0, jitter_percent, jitter_ab, RAP, PPQ, DDP, shimmer, shimmer_db, APQ3, APQ5, APQ,DDA, NHR, HNR, RPDE, DFA, spread1, spread2, D2, PPE ])\n",
+        "\n",
+        "audio_path = r\"/storage/emulated/0/Download/HC_AH/HC_AH/FILE.wav\"\n",
+        "\n",
+        "# Convert to WAV if needed\n",
+        "audio = AudioSegment.from_file(audio_path)\n",
+        "audio.export(\"audio.wav\", format=\"wav\")\n",
+        "\n",
+        "features = extract_voice_features(\"audio.wav\").reshape(1, -1)\n",
+        "features_scaled = scaler.transform(features)\n",
+        "\n",
+        "\n",
+        "\n",
+        "# Predict using your model\n",
+        "prediction = model.predict(transform)[0]\n",
+        "probability = model.predict_proba(transform)[0][1]\n",
+        "print(\" The probability of getting Parkinson's is \", probability)\n",
+        "\n"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "source": [],
+      "metadata": {
+        "id": "djEiEHVexOt0"
+      }
+    }
+  ]
+}
