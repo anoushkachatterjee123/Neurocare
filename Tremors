@@ -1,0 +1,42 @@
+import pandas as pd
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score
+from google.colab import files
+uploaded = files.upload()
+data = pd.read_csv("tremor.csv")
+print("Actual columns in DataFrame:", data.columns)
+tremor_features = [
+      "Magnitude_mean",
+      "Magnitude_std_dev",
+      "Magnitude_var",
+      "Magnitude_rms",
+      "Magnitude_iqr",
+      "Magnitude_med_dev",
+      "Magnitude_avg_diff_mean"]
+X = data[tremor_features]
+threshold = data["Constancy_of_rest"].quantile(0.75)
+y = ((data["Rest_tremor"] == 1) &
+          (data["Constancy_of_rest"] >= threshold)
+          ).astype(int)
+X_train, X_test, y_train, y_test = train_test_split(
+      X, y, test_size=0.2, random_state=42
+      )
+scaler = StandardScaler()
+X_train = scaler.fit_transform(X_train)
+X_test = scaler.transform(X_test)
+model = LogisticRegression()
+model.fit(X_train, y_train)
+y_pred = model.predict(X_test)
+accuracy = accuracy_score(y_test, y_pred)
+print("Accuracy:", accuracy)
+def predict_parkinsons_probability(tremor_data):
+      tremor_data = np.array(tremor_data).reshape(1, -1)
+      tremor_data = scaler.transform(tremor_data)
+      probability = model.predict_proba(tremor_data)[0][1]
+      return probability
+example_patient=[3.5,2.0,1.5,2.8,1.0,3.2,2]
+probability = predict_parkinsons_probability(example_patient)
+print(f"Probability of Parkinson's: {probability:.2f}")
