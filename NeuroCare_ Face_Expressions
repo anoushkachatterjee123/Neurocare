@@ -1,0 +1,217 @@
+import pandas as pd
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import classification_report, confusion_matrix, roc_auc_score, roc_curve
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+# Load the dataset
+# Replace 'parkinsons_data.csv' with your actual file path
+df = pd.read_csv('parkinsons_data.csv')
+
+print("Dataset shape:", df.shape)
+print("\nFirst few rows:")
+print(df.head())
+print("\nDataset info:")
+print(df.info())
+print("\nMissing values:")
+print(df.isnull().sum())
+
+# Assuming the target column is named 'status' or 'diagnosis' (1 = Parkinson's, 0 = Healthy)
+# Adjust column names based on your actual dataset
+target_column = 'status' # Change this to match your dataset
+
+# Separate features and target
+X = df.drop(columns=[target_column])
+y = df[target_column]
+
+# Handle any non-numeric columns if present
+X = X.select_dtypes(include=[np.number])
+
+print(f"\nFeatures shape: {X.shape}")
+print(f"Target distribution:\n{y.value_counts()}")
+
+# Split the data
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42, stratify=y
+)
+
+# Scale the features
+scaler = StandardScaler()
+X_train_scaled = scaler.fit_transform(X_train)
+X_test_scaled = scaler.transform(X_test)
+
+# Train Random Forest Classifier
+model = RandomForestClassifier(
+    n_estimators=100,
+    max_depth=10,
+    random_state=42,
+    class_weight='balanced'
+)
+
+model.fit(X_train_scaled, y_train)
+
+# Make predictions
+y_pred = model.predict(X_test_scaled)
+y_pred_proba = model.predict_proba(X_test_scaled)
+
+# Evaluation
+print("\n" + "="*50)
+print("MODEL EVALUATION")
+print("="*50)
+print("\nClassification Report:")
+print(classification_report(y_test, y_pred))
+
+print("\nConfusion Matrix:")
+cm = confusion_matrix(y_test, y_pred)
+print(cm)
+
+# ROC AUC Score
+roc_auc = roc_auc_score(y_test, y_pred_proba[:, 1])
+print(f"\nROC AUC Score: {roc_auc:.4f}")
+
+# Feature Importance
+feature_importance = pd.DataFrame({
+    'feature': X.columns,
+    'importance': model.feature_importances_
+}).sort_values('importance', ascending=False)
+
+print("\nTop 10 Most Important Features:")
+print(feature_importance.head(10))
+
+# Visualization
+fig, axes = plt.subplots(2, 2, figsize=(15, 12))
+
+# 1. Confusion Matrix
+sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', ax=axes[0, 0])
+axes[0, 0].set_title('Confusion Matrix')
+axes[0, 0].set_ylabel('Actual')
+axes[0, 0].set_xlabel('Predicted')
+
+# 2. ROC Curve
+fpr, tpr, _ = roc_curve(y_test, y_pred_proba[:, 1])
+axes[0, 1].plot(fpr, tpr, label=f'ROC Curve (AUC = {roc_auc:.4f})')
+axes[0, 1].plot([0, 1], [0, 1], 'k--', label='Random Classifier')
+axes[0, 1].set_xlabel('False Positive Rate')
+axes[0, 1].set_ylabel('True Positive Rate')
+axes[0, 1].set_title('ROC Curve')
+axes[0, 1].legend()
+axes[0, 1].grid(True)
+
+# 3. Feature Importance
+top_features = feature_importance.head(15)
+axes[1, 0].barh(top_features['feature'], top_features['importance'])
+axes[1, 0].set_xlabel('Importance')
+axes[1, 0].set_title('Top 15 Feature Importances')
+axes[1, 0].invert_yaxis()
+
+# 4. Probability Distribution
+axes[1, 1].hist(y_pred_proba[y_test == 0, 1], bins=30, alpha=0.5, label='Healthy', color='green')
+axes[1, 1].hist(y_pred_proba[y_test == 1, 1], bins=30, alpha=0.5, label="Parkinson's", color='red')
+axes[1, 1].set_xlabel('Predicted Probability of Parkinson\'s')
+axes[1, 1].set_ylabel('Frequency')
+axes[1, 1].set_title('Distribution of Predicted Probabilities')
+axes[1, 1].legend()
+
+plt.tight_layout()
+plt.savefig('parkinsons_model_evaluation.png', dpi=300, bbox_inches='tight')
+plt.show()
+
+print("\n" + "="*50)
+print("PREDICTION FUNCTION")
+print("="*50)
+
+def predict_parkinsons(input_features, model, scaler, feature_names):
+    """
+    Predict Parkinson's disease probability for new input.
+    
+    Parameters:
+    -----------
+    input_features : dict or array-like
+        If dict: {feature_name: value, ...}
+        If array: values in the same order as training features
+    model : trained classifier
+    scaler : fitted StandardScaler
+    feature_names : list of feature names
+    
+    Returns:
+    --------
+    dict with probability and prediction
+    """
+    # Convert input to DataFrame
+    if isinstance(input_features, dict):
+        input_df = pd.DataFrame([input_features])
+    else:
+        input_df = pd.DataFrame([input_features], columns=feature_names)
+    
+    # Ensure all features are present
+    for col in feature_names:
+        if col not in input_df.columns:
+            input_df[col] = 0 # Default value for missing features
+    
+    input_df = input_df[feature_names] # Reorder columns
+    
+    # Scale the input
+    input_scaled = scaler.transform(input_df)
+    
+    # Make prediction
+    prediction = model.predict(input_scaled)[0]
+    probability = model.predict_proba(input_scaled)[0]
+    
+    result = {
+        'has_parkinsons': bool(prediction),
+        'probability_healthy': float(probability[0]),
+        'probability_parkinsons': float(probability[1]),
+        'confidence': float(max(probability))
+    }
+    
+    return result
+
+# Example usage
+print("\nExample Prediction:")
+print("-" * 50)
+
+# Get a sample from test set
+sample_idx = 0
+sample_input = X_test.iloc[sample_idx].to_dict()
+actual_label = y_test.iloc[sample_idx]
+
+result = predict_parkinsons(sample_input, model, scaler, X.columns.tolist())
+
+print(f"Actual diagnosis: {'Parkinson\'s' if actual_label == 1 else 'Healthy'}")
+print(f"Predicted: {'Parkinson\'s' if result['has_parkinsons'] else 'Healthy'}")
+print(f"Probability of being healthy: {result['probability_healthy']:.2%}")
+print(f"Probability of having Parkinson's: {result['probability_parkinsons']:.2%}")
+print(f"Confidence: {result['confidence']:.2%}")
+
+# Save the model
+import pickle
+
+model_data = {
+    'model': model,
+    'scaler': scaler,
+    'feature_names': X.columns.tolist()
+}
+
+with open('parkinsons_model.pkl', 'wb') as f:
+    pickle.dump(model_data, f)
+
+print("\n✓ Model saved as 'parkinsons_model.pkl'")
+print("\nTo use the saved model later:")
+print("""
+import pickle
+
+# Load the model
+with open('parkinsons_model.pkl', 'rb') as f:
+    model_data = pickle.load(f)
+
+model = model_data['model']
+scaler = model_data['scaler']
+feature_names = model_data['feature_names']
+
+# Make prediction with new data
+new_data = {...} # Your input features
+result = predict_parkinsons(new_data, model, scaler, feature_names)
+print(result)
