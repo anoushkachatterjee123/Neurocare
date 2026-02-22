@@ -1,0 +1,132 @@
+
+import numpy as np
+
+# ── Risk thresholds ───────────────────────────────────────────────────
+RISK_THRESHOLDS = {
+    "low":      0.30,
+    "moderate": 0.55,
+    "high":     0.75,
+}
+
+def get_risk_label(p):
+    if p < RISK_THRESHOLDS["low"]:
+        return "Low Risk"
+    elif p < RISK_THRESHOLDS["moderate"]:
+        return "Moderate Risk"
+    elif p < RISK_THRESHOLDS["high"]:
+        return "High Risk"
+    else:
+        return "Very High Risk"
+
+
+def combine_max(handwriting_prob=None, face_prob=None,
+                tremor_prob=None, speech_prob=None):
+    """
+    Takes the maximum probability across all available modules.
+
+    Parameters
+    ----------
+    handwriting_prob : float or None
+    face_prob        : float or None
+    tremor_prob      : float or None
+    speech_prob      : float or None
+
+    Returns
+    -------
+    dict with final combined probability and details
+    """
+
+    modules = {
+        "Handwriting":      handwriting_prob,
+        "Face Expressions": face_prob,
+        "Tremors":          tremor_prob,
+        "Speech":           speech_prob,
+    }
+
+    available = {k: v for k, v in modules.items() if v is not None}
+
+    if not available:
+        raise ValueError("Provide at least one module probability.")
+
+    for name, prob in available.items():
+        if not (0.0 <= prob <= 1.0):
+            raise ValueError(f"'{name}' probability must be 0–1. Got: {prob}")
+
+    # ── Core logic: take the MAX ──────────────────────────────────────
+    winning_module = max(available, key=available.get)
+    final_prob     = available[winning_module]
+
+    result = {
+        "final_probability": final_prob,
+        "winning_module":    winning_module,
+        "risk_level":        get_risk_label(final_prob),
+        "all_scores":        available,
+        "missing":           [k for k, v in modules.items() if v is None],
+    }
+
+    # ── Print report ─────────────────────────────────────────────────
+    SEP = "=" * 55
+    print(f"\n{SEP}")
+    print("  NEUROCARE — PARKINSON'S RISK REPORT (MAX METHOD)")
+    print(SEP)
+
+    print("\n📋 Individual Module Scores:")
+    for name, prob in available.items():
+        bar     = "█" * int(prob * 20) + "░" * (20 - int(prob * 20))
+        marker  = "  ◄ HIGHEST" if name == winning_module else ""
+        print(f"   {name:<20} {bar}  {prob:.1%}{marker}")
+
+    if result["missing"]:
+        print(f"\n⚠️  Not run: {', '.join(result['missing'])}")
+
+    print(f"\n{'─'*55}")
+    print(f"🎯 Combined Score  :  {final_prob:.1%}  (from {winning_module})")
+    print(f"   Risk Level      :  {result['risk_level']}")
+    print(f"{'─'*55}")
+    print("⚕️  Research tool only — not a medical diagnosis.")
+    print(f"{SEP}\n")
+
+    return result
+
+
+# ═══════════════════════════════════════════════════════
+# STEP 1 — Paste your probabilities here
+# ═══════════════════════════════════════════════════════
+#
+# From NeuroCare_Handwriting:
+#   result = predict_parkinsons_from_image(image_path, model)
+#   handwriting_p = result['probability_parkinsons']
+#
+# From NeuroCare_Face_Expressions:
+#   result = predict_parkinsons(input_features, model, scaler, feature_names)
+#   face_p = result['probability_parkinsons']
+#
+# From Neurocare_Tremors:
+#   tremor_p = predict_parkinsons_probability(patient_data)
+#
+# From Neurocare_Speech:
+#   speech_p = probability  (from model.predict_proba)
+#
+# Leave a module as None if you haven't run it yet.
+# ═══════════════════════════════════════════════════════
+
+handwriting_p  = 0.72   # ← replace with your value
+face_p         = 0.61   # ← replace with your value
+tremor_p       = 0.80   # ← replace with your value
+speech_p       = 0.68   # ← replace with your value
+
+# ═══════════════════════════════════════════════════════
+# STEP 2 — Run the combiner
+# ═══════════════════════════════════════════════════════
+
+result = combine_max(
+    handwriting_prob = handwriting_p,
+    face_prob        = face_p,
+    tremor_prob      = tremor_p,
+    speech_prob      = speech_p,
+)
+
+# Access the result programmatically if needed:
+print(f"Final probability : {result['final_probability']:.1%}")
+print(f"Driven by         : {result['winning_module']}")
+print(f"Risk level        : {result['risk_level']}")
