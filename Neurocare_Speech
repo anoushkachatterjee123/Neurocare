@@ -447,8 +447,6 @@
         "from sklearn.ensemble import RandomForestClassifier\n",
         "from sklearn.metrics import classification_report, accuracy_score\n",
         "from sklearn.preprocessing import StandardScaler\n",
-        "from google.colab import files\n",
-        "uploaded = files.upload()\n",
         "df=pd.read_csv('Parkinson_disease.csv')\n",
         "# Drop non-numeric column\n",
         "X = df.drop(columns=['name', 'status'])\n",
