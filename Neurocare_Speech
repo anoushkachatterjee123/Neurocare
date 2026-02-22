@@ -1,542 +1,127 @@
-{
-  "nbformat": 4,
-  "nbformat_minor": 0,
-  "metadata": {
-    "colab": {
-      "provenance": []
-    },
-    "kernelspec": {
-      "name": "python3",
-      "display_name": "Python 3"
-    },
-    "language_info": {
-      "name": "python"
-    }
-  },
-  "cells": [
-    {
-      "cell_type": "code",
-      "execution_count": 4,
-      "metadata": {
-        "colab": {
-          "base_uri": "https://localhost:8080/",
-          "height": 201
-        },
-        "id": "lnWHGHyUv_nV",
-        "outputId": "16e89580-9d77-4826-cead-164888f6abdc"
-      },
-      "outputs": [
-        {
-          "output_type": "display_data",
-          "data": {
-            "text/plain": [
-              "<IPython.core.display.HTML object>"
-            ],
-            "text/html": [
-              "\n",
-              "     <input type=\"file\" id=\"files-57801008-6a2b-47ec-aaec-71275f400a63\" name=\"files[]\" multiple disabled\n",
-              "        style=\"border:none\" />\n",
-              "     <output id=\"result-57801008-6a2b-47ec-aaec-71275f400a63\">\n",
-              "      Upload widget is only available when the cell has been executed in the\n",
-              "      current browser session. Please rerun this cell to enable.\n",
-              "      </output>\n",
-              "      <script>// Copyright 2017 Google LLC\n",
-              "//\n",
-              "// Licensed under the Apache License, Version 2.0 (the \"License\");\n",
-              "// you may not use this file except in compliance with the License.\n",
-              "// You may obtain a copy of the License at\n",
-              "//\n",
-              "//      http://www.apache.org/licenses/LICENSE-2.0\n",
-              "//\n",
-              "// Unless required by applicable law or agreed to in writing, software\n",
-              "// distributed under the License is distributed on an \"AS IS\" BASIS,\n",
-              "// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\n",
-              "// See the License for the specific language governing permissions and\n",
-              "// limitations under the License.\n",
-              "\n",
-              "/**\n",
-              " * @fileoverview Helpers for google.colab Python module.\n",
-              " */\n",
-              "(function(scope) {\n",
-              "function span(text, styleAttributes = {}) {\n",
-              "  const element = document.createElement('span');\n",
-              "  element.textContent = text;\n",
-              "  for (const key of Object.keys(styleAttributes)) {\n",
-              "    element.style[key] = styleAttributes[key];\n",
-              "  }\n",
-              "  return element;\n",
-              "}\n",
-              "\n",
-              "// Max number of bytes which will be uploaded at a time.\n",
-              "const MAX_PAYLOAD_SIZE = 100 * 1024;\n",
-              "\n",
-              "function _uploadFiles(inputId, outputId) {\n",
-              "  const steps = uploadFilesStep(inputId, outputId);\n",
-              "  const outputElement = document.getElementById(outputId);\n",
-              "  // Cache steps on the outputElement to make it available for the next call\n",
-              "  // to uploadFilesContinue from Python.\n",
-              "  outputElement.steps = steps;\n",
-              "\n",
-              "  return _uploadFilesContinue(outputId);\n",
-              "}\n",
-              "\n",
-              "// This is roughly an async generator (not supported in the browser yet),\n",
-              "// where there are multiple asynchronous steps and the Python side is going\n",
-              "// to poll for completion of each step.\n",
-              "// This uses a Promise to block the python side on completion of each step,\n",
-              "// then passes the result of the previous step as the input to the next step.\n",
-              "function _uploadFilesContinue(outputId) {\n",
-              "  const outputElement = document.getElementById(outputId);\n",
-              "  const steps = outputElement.steps;\n",
-              "\n",
-              "  const next = steps.next(outputElement.lastPromiseValue);\n",
-              "  return Promise.resolve(next.value.promise).then((value) => {\n",
-              "    // Cache the last promise value to make it available to the next\n",
-              "    // step of the generator.\n",
-              "    outputElement.lastPromiseValue = value;\n",
-              "    return next.value.response;\n",
-              "  });\n",
-              "}\n",
-              "\n",
-              "/**\n",
-              " * Generator function which is called between each async step of the upload\n",
-              " * process.\n",
-              " * @param {string} inputId Element ID of the input file picker element.\n",
-              " * @param {string} outputId Element ID of the output display.\n",
-              " * @return {!Iterable<!Object>} Iterable of next steps.\n",
-              " */\n",
-              "function* uploadFilesStep(inputId, outputId) {\n",
-              "  const inputElement = document.getElementById(inputId);\n",
-              "  inputElement.disabled = false;\n",
-              "\n",
-              "  const outputElement = document.getElementById(outputId);\n",
-              "  outputElement.innerHTML = '';\n",
-              "\n",
-              "  const pickedPromise = new Promise((resolve) => {\n",
-              "    inputElement.addEventListener('change', (e) => {\n",
-              "      resolve(e.target.files);\n",
-              "    });\n",
-              "  });\n",
-              "\n",
-              "  const cancel = document.createElement('button');\n",
-              "  inputElement.parentElement.appendChild(cancel);\n",
-              "  cancel.textContent = 'Cancel upload';\n",
-              "  const cancelPromise = new Promise((resolve) => {\n",
-              "    cancel.onclick = () => {\n",
-              "      resolve(null);\n",
-              "    };\n",
-              "  });\n",
-              "\n",
-              "  // Wait for the user to pick the files.\n",
-              "  const files = yield {\n",
-              "    promise: Promise.race([pickedPromise, cancelPromise]),\n",
-              "    response: {\n",
-              "      action: 'starting',\n",
-              "    }\n",
-              "  };\n",
-              "\n",
-              "  cancel.remove();\n",
-              "\n",
-              "  // Disable the input element since further picks are not allowed.\n",
-              "  inputElement.disabled = true;\n",
-              "\n",
-              "  if (!files) {\n",
-              "    return {\n",
-              "      response: {\n",
-              "        action: 'complete',\n",
-              "      }\n",
-              "    };\n",
-              "  }\n",
-              "\n",
-              "  for (const file of files) {\n",
-              "    const li = document.createElement('li');\n",
-              "    li.append(span(file.name, {fontWeight: 'bold'}));\n",
-              "    li.append(span(\n",
-              "        `(${file.type || 'n/a'}) - ${file.size} bytes, ` +\n",
-              "        `last modified: ${\n",
-              "            file.lastModifiedDate ? file.lastModifiedDate.toLocaleDateString() :\n",
-              "                                    'n/a'} - `));\n",
-              "    const percent = span('0% done');\n",
-              "    li.appendChild(percent);\n",
-              "\n",
-              "    outputElement.appendChild(li);\n",
-              "\n",
-              "    const fileDataPromise = new Promise((resolve) => {\n",
-              "      const reader = new FileReader();\n",
-              "      reader.onload = (e) => {\n",
-              "        resolve(e.target.result);\n",
-              "      };\n",
-              "      reader.readAsArrayBuffer(file);\n",
-              "    });\n",
-              "    // Wait for the data to be ready.\n",
-              "    let fileData = yield {\n",
-              "      promise: fileDataPromise,\n",
-              "      response: {\n",
-              "        action: 'continue',\n",
-              "      }\n",
-              "    };\n",
-              "\n",
-              "    // Use a chunked sending to avoid message size limits. See b/62115660.\n",
-              "    let position = 0;\n",
-              "    do {\n",
-              "      const length = Math.min(fileData.byteLength - position, MAX_PAYLOAD_SIZE);\n",
-              "      const chunk = new Uint8Array(fileData, position, length);\n",
-              "      position += length;\n",
-              "\n",
-              "      const base64 = btoa(String.fromCharCode.apply(null, chunk));\n",
-              "      yield {\n",
-              "        response: {\n",
-              "          action: 'append',\n",
-              "          file: file.name,\n",
-              "          data: base64,\n",
-              "        },\n",
-              "      };\n",
-              "\n",
-              "      let percentDone = fileData.byteLength === 0 ?\n",
-              "          100 :\n",
-              "          Math.round((position / fileData.byteLength) * 100);\n",
-              "      percent.textContent = `${percentDone}% done`;\n",
-              "\n",
-              "    } while (position < fileData.byteLength);\n",
-              "  }\n",
-              "\n",
-              "  // All done.\n",
-              "  yield {\n",
-              "    response: {\n",
-              "      action: 'complete',\n",
-              "    }\n",
-              "  };\n",
-              "}\n",
-              "\n",
-              "scope.google = scope.google || {};\n",
-              "scope.google.colab = scope.google.colab || {};\n",
-              "scope.google.colab._files = {\n",
-              "  _uploadFiles,\n",
-              "  _uploadFilesContinue,\n",
-              "};\n",
-              "})(self);\n",
-              "</script> "
-            ]
-          },
-          "metadata": {}
-        },
-        {
-          "output_type": "stream",
-          "name": "stdout",
-          "text": [
-            "Saving Parkinson_disease.csv to Parkinson_disease (5).csv\n"
-          ]
-        },
-        {
-          "output_type": "display_data",
-          "data": {
-            "text/plain": [
-              "<IPython.core.display.HTML object>"
-            ],
-            "text/html": [
-              "\n",
-              "     <input type=\"file\" id=\"files-796f345f-3821-432d-b506-4c409bdc4d79\" name=\"files[]\" multiple disabled\n",
-              "        style=\"border:none\" />\n",
-              "     <output id=\"result-796f345f-3821-432d-b506-4c409bdc4d79\">\n",
-              "      Upload widget is only available when the cell has been executed in the\n",
-              "      current browser session. Please rerun this cell to enable.\n",
-              "      </output>\n",
-              "      <script>// Copyright 2017 Google LLC\n",
-              "//\n",
-              "// Licensed under the Apache License, Version 2.0 (the \"License\");\n",
-              "// you may not use this file except in compliance with the License.\n",
-              "// You may obtain a copy of the License at\n",
-              "//\n",
-              "//      http://www.apache.org/licenses/LICENSE-2.0\n",
-              "//\n",
-              "// Unless required by applicable law or agreed to in writing, software\n",
-              "// distributed under the License is distributed on an \"AS IS\" BASIS,\n",
-              "// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\n",
-              "// See the License for the specific language governing permissions and\n",
-              "// limitations under the License.\n",
-              "\n",
-              "/**\n",
-              " * @fileoverview Helpers for google.colab Python module.\n",
-              " */\n",
-              "(function(scope) {\n",
-              "function span(text, styleAttributes = {}) {\n",
-              "  const element = document.createElement('span');\n",
-              "  element.textContent = text;\n",
-              "  for (const key of Object.keys(styleAttributes)) {\n",
-              "    element.style[key] = styleAttributes[key];\n",
-              "  }\n",
-              "  return element;\n",
-              "}\n",
-              "\n",
-              "// Max number of bytes which will be uploaded at a time.\n",
-              "const MAX_PAYLOAD_SIZE = 100 * 1024;\n",
-              "\n",
-              "function _uploadFiles(inputId, outputId) {\n",
-              "  const steps = uploadFilesStep(inputId, outputId);\n",
-              "  const outputElement = document.getElementById(outputId);\n",
-              "  // Cache steps on the outputElement to make it available for the next call\n",
-              "  // to uploadFilesContinue from Python.\n",
-              "  outputElement.steps = steps;\n",
-              "\n",
-              "  return _uploadFilesContinue(outputId);\n",
-              "}\n",
-              "\n",
-              "// This is roughly an async generator (not supported in the browser yet),\n",
-              "// where there are multiple asynchronous steps and the Python side is going\n",
-              "// to poll for completion of each step.\n",
-              "// This uses a Promise to block the python side on completion of each step,\n",
-              "// then passes the result of the previous step as the input to the next step.\n",
-              "function _uploadFilesContinue(outputId) {\n",
-              "  const outputElement = document.getElementById(outputId);\n",
-              "  const steps = outputElement.steps;\n",
-              "\n",
-              "  const next = steps.next(outputElement.lastPromiseValue);\n",
-              "  return Promise.resolve(next.value.promise).then((value) => {\n",
-              "    // Cache the last promise value to make it available to the next\n",
-              "    // step of the generator.\n",
-              "    outputElement.lastPromiseValue = value;\n",
-              "    return next.value.response;\n",
-              "  });\n",
-              "}\n",
-              "\n",
-              "/**\n",
-              " * Generator function which is called between each async step of the upload\n",
-              " * process.\n",
-              " * @param {string} inputId Element ID of the input file picker element.\n",
-              " * @param {string} outputId Element ID of the output display.\n",
-              " * @return {!Iterable<!Object>} Iterable of next steps.\n",
-              " */\n",
-              "function* uploadFilesStep(inputId, outputId) {\n",
-              "  const inputElement = document.getElementById(inputId);\n",
-              "  inputElement.disabled = false;\n",
-              "\n",
-              "  const outputElement = document.getElementById(outputId);\n",
-              "  outputElement.innerHTML = '';\n",
-              "\n",
-              "  const pickedPromise = new Promise((resolve) => {\n",
-              "    inputElement.addEventListener('change', (e) => {\n",
-              "      resolve(e.target.files);\n",
-              "    });\n",
-              "  });\n",
-              "\n",
-              "  const cancel = document.createElement('button');\n",
-              "  inputElement.parentElement.appendChild(cancel);\n",
-              "  cancel.textContent = 'Cancel upload';\n",
-              "  const cancelPromise = new Promise((resolve) => {\n",
-              "    cancel.onclick = () => {\n",
-              "      resolve(null);\n",
-              "    };\n",
-              "  });\n",
-              "\n",
-              "  // Wait for the user to pick the files.\n",
-              "  const files = yield {\n",
-              "    promise: Promise.race([pickedPromise, cancelPromise]),\n",
-              "    response: {\n",
-              "      action: 'starting',\n",
-              "    }\n",
-              "  };\n",
-              "\n",
-              "  cancel.remove();\n",
-              "\n",
-              "  // Disable the input element since further picks are not allowed.\n",
-              "  inputElement.disabled = true;\n",
-              "\n",
-              "  if (!files) {\n",
-              "    return {\n",
-              "      response: {\n",
-              "        action: 'complete',\n",
-              "      }\n",
-              "    };\n",
-              "  }\n",
-              "\n",
-              "  for (const file of files) {\n",
-              "    const li = document.createElement('li');\n",
-              "    li.append(span(file.name, {fontWeight: 'bold'}));\n",
-              "    li.append(span(\n",
-              "        `(${file.type || 'n/a'}) - ${file.size} bytes, ` +\n",
-              "        `last modified: ${\n",
-              "            file.lastModifiedDate ? file.lastModifiedDate.toLocaleDateString() :\n",
-              "                                    'n/a'} - `));\n",
-              "    const percent = span('0% done');\n",
-              "    li.appendChild(percent);\n",
-              "\n",
-              "    outputElement.appendChild(li);\n",
-              "\n",
-              "    const fileDataPromise = new Promise((resolve) => {\n",
-              "      const reader = new FileReader();\n",
-              "      reader.onload = (e) => {\n",
-              "        resolve(e.target.result);\n",
-              "      };\n",
-              "      reader.readAsArrayBuffer(file);\n",
-              "    });\n",
-              "    // Wait for the data to be ready.\n",
-              "    let fileData = yield {\n",
-              "      promise: fileDataPromise,\n",
-              "      response: {\n",
-              "        action: 'continue',\n",
-              "      }\n",
-              "    };\n",
-              "\n",
-              "    // Use a chunked sending to avoid message size limits. See b/62115660.\n",
-              "    let position = 0;\n",
-              "    do {\n",
-              "      const length = Math.min(fileData.byteLength - position, MAX_PAYLOAD_SIZE);\n",
-              "      const chunk = new Uint8Array(fileData, position, length);\n",
-              "      position += length;\n",
-              "\n",
-              "      const base64 = btoa(String.fromCharCode.apply(null, chunk));\n",
-              "      yield {\n",
-              "        response: {\n",
-              "          action: 'append',\n",
-              "          file: file.name,\n",
-              "          data: base64,\n",
-              "        },\n",
-              "      };\n",
-              "\n",
-              "      let percentDone = fileData.byteLength === 0 ?\n",
-              "          100 :\n",
-              "          Math.round((position / fileData.byteLength) * 100);\n",
-              "      percent.textContent = `${percentDone}% done`;\n",
-              "\n",
-              "    } while (position < fileData.byteLength);\n",
-              "  }\n",
-              "\n",
-              "  // All done.\n",
-              "  yield {\n",
-              "    response: {\n",
-              "      action: 'complete',\n",
-              "    }\n",
-              "  };\n",
-              "}\n",
-              "\n",
-              "scope.google = scope.google || {};\n",
-              "scope.google.colab = scope.google.colab || {};\n",
-              "scope.google.colab._files = {\n",
-              "  _uploadFiles,\n",
-              "  _uploadFilesContinue,\n",
-              "};\n",
-              "})(self);\n",
-              "</script> "
-            ]
-          },
-          "metadata": {}
-        },
-        {
-          "output_type": "stream",
-          "name": "stdout",
-          "text": [
-            "Saving FILE .wav to FILE  (3).wav\n",
-            " The probability of getting Parkinson's is  0.47\n"
-          ]
-        },
-        {
-          "output_type": "stream",
-          "name": "stderr",
-          "text": [
-            "/usr/local/lib/python3.12/dist-packages/sklearn/utils/validation.py:2739: UserWarning: X does not have valid feature names, but StandardScaler was fitted with feature names\n",
-            "  warnings.warn(\n"
-          ]
-        }
-      ],
-      "source": [
-        "import pandas as pd\n",
-        "import librosa\n",
-        "import numpy as np\n",
-        "from pydub import AudioSegment\n",
-        "from sklearn.model_selection import train_test_split\n",
-        "from sklearn.ensemble import RandomForestClassifier\n",
-        "from sklearn.metrics import classification_report, accuracy_score\n",
-        "from sklearn.preprocessing import StandardScaler\n",
-        "df=pd.read_csv('Parkinson_disease.csv')\n",
-        "# Drop non-numeric column\n",
-        "X = df.drop(columns=['name', 'status'])\n",
-        "y = df['status']\n",
-        "\n",
-        "# Scale features\n",
-        "scaler = StandardScaler()\n",
-        "X_scaled = scaler.fit_transform(X)\n",
-        "\n",
-        "# Split the dataset\n",
-        "X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.2, random_state=42)\n",
-        "\n",
-        "# Initialize and train the Random Forest model\n",
-        "model = RandomForestClassifier(n_estimators=100, random_state=42)\n",
-        "model.fit(X_train, y_train)\n",
-        "\n",
-        "# Predict on the test set\n",
-        "y_pred = model.predict(X_test)\n",
-        "\n",
-        "accuracy = accuracy_score(y_test, y_pred)\n",
-        "report = classification_report(y_test, y_pred)\n",
-        "\n",
-        "accuracy,report\n",
-        "\n",
-        "from google.colab import files\n",
-        "uploaded = files.upload()\n",
-        "audio_file = list(uploaded.keys())[0] # Get the name of the uploaded file\n",
-        "def extract_voice_features(audio_file):\n",
-        "    y, sr = librosa.load(audio_file, sr=None)\n",
-        "    f0, voiced_flag, voiced_probs = librosa.pyin (y, fmin=50, fmax=400 )\n",
-        "    f0 = f0[~np.isnan(f0)]\n",
-        "    mean_F0 = np.mean(f0)\n",
-        "    max_F0 = np.max(f0)\n",
-        "    min_F0 = np.min(f0)\n",
-        "\n",
-        "\n",
-        "    jitter_percent = np.mean(np.abs(np.diff(f0))) / mean_F0\n",
-        "    jitter_abs = np.mean(np.abs(np.diff(f0)))\n",
-        "    RAP = np.std(f0[:3]) if len(f0) > 3 else np.std(f0)\n",
-        "    PPQ = np.std(f0[:5]) if len(f0) > 5 else np.std(f0)\n",
-        "    DDP = jitter_abs * 3\n",
-        "\n",
-        "    rms = librosa.feature.rms(y=y)[0]\n",
-        "    shimmer = np.mean(np.abs(np.diff(rms))) / np.mean(rms)\n",
-        "    shimmer_db = 20 * np.log10(np.mean(rms))\n",
-        "    APQ3 = np.std(rms[:3]) if len(rms) > 3 else np.std(rms)\n",
-        "    APQ5 = np.std(rms[:5]) if len(rms) > 5 else np.std(rms)\n",
-        "    APQ = np.std(rms)\n",
-        "    DDA = APQ3 * 3\n",
-        "\n",
-        "    S = librosa.stft(y)\n",
-        "    harm, noise = librosa.decompose.hpss(S)\n",
-        "    harm_audio = librosa.istft(harm)\n",
-        "    noise_audio = librosa.istft(noise)\n",
-        "    HNR = np.mean(harm_audio**2) / (np.mean(noise_audio**2) + 1e-6)\n",
-        "\n",
-        "    # --- Nonlinear features ---\n",
-        "    NHR = np.mean(noise_audio**2) / (np.mean(harm_audio**2) + 1e-6)\n",
-        "    RPDE = np.var(f0)\n",
-        "    DFA = np.mean(np.abs(np.diff(rms)))\n",
-        "\n",
-        "    # --- Additional nonlinear features to match dataset ---\n",
-        "    spread1 = np.mean(np.diff(f0)) if len(f0) > 1 else 0\n",
-        "    spread2 = np.var(np.diff(f0)) if len(f0) > 1 else 0\n",
-        "    D2 = np.std(f0)\n",
-        "    PPE = np.var(np.diff(f0)) / mean_F0\n",
-        "\n",
-        "\n",
-        "    return np.array([ mean_F0, max_F0, min_F0, jitter_percent, jitter_abs, RAP, PPQ, DDP, shimmer,\n",
-        "                      shimmer_db, APQ3, APQ5, APQ,DDA, NHR, HNR, RPDE, DFA, spread1, spread2, D2, PPE ])\n",
-        "\n",
-        "\n",
-        "# Convert to WAV if needed\n",
-        "features=extract_voice_features = extract_voice_features(audio_file).reshape(1, -1)\n",
-        "features_scaled = scaler.transform(features)\n",
-        "\n",
-        "\n",
-        "\n",
-        "# Predict using your model\n",
-        "prediction = model.predict(features_scaled)[0]\n",
-        "probability = model.predict_proba(features_scaled)[0][1]\n",
-        "print(\" The probability of getting Parkinson's is \", probability)\n"
-      ]
-    },
-    {
-      "cell_type": "markdown",
-      "source": [],
-      "metadata": {
-        "id": "djEiEHVexOt0"
-      }
-    }
-  ]
-}
+import pandas as pd
+import numpy as np
+import librosa
+from pydub import AudioSegment
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score, classification_report
+from sklearn.preprocessing import StandardScaler
+
+
+# ---------------------------------------------------------
+# 1. LOAD DATASET
+# ---------------------------------------------------------
+df = pd.read_csv("Parkinson_disease.csv")
+
+X = df.drop(columns=['name', 'status'])
+y = df['status']
+
+
+# ---------------------------------------------------------
+# 2. SCALE
+# ---------------------------------------------------------
+scaler = StandardScaler()
+X_scaled = scaler.fit_transform(X)
+
+
+# ---------------------------------------------------------
+# 3. TRAIN/TEST SPLIT
+# ---------------------------------------------------------
+X_train, X_test, y_train, y_test = train_test_split(
+    X_scaled, y, test_size=0.2, random_state=42
+)
+
+model = RandomForestClassifier(n_estimators=300, random_state=42)
+model.fit(X_train, y_train)
+
+
+# ---------------------------------------------------------
+# 4. PRINT TRAINING PERFORMANCE
+# ---------------------------------------------------------
+y_pred = model.predict(X_test)
+print("Model Accuracy:", accuracy_score(y_test, y_pred))
+print(classification_report(y_test, y_pred))
+
+
+# ---------------------------------------------------------
+# 5. FEATURE EXTRACTION MATCHING 22 FEATURES
+# ---------------------------------------------------------
+
+def extract_voice_features(audio_file):
+    y, sr = librosa.load(audio_file, sr=None)
+
+    # --- F0 (fundamental frequency) ---
+    f0, voiced_flag, voiced_probs = librosa.pyin(
+        y, fmin=50, fmax=400
+    )
+    f0 = f0[~np.isnan(f0)]
+    mean_F0 = np.mean(f0)
+    max_F0 = np.max(f0)
+    min_F0 = np.min(f0)
+
+    # --- Jitter metrics ---
+    jitter_percent = np.mean(np.abs(np.diff(f0))) / mean_F0
+    jitter_abs = np.mean(np.abs(np.diff(f0)))
+    RAP = np.std(f0[:3]) if len(f0) > 3 else np.std(f0)
+    PPQ = np.std(f0[:5]) if len(f0) > 5 else np.std(f0)
+    DDP = jitter_abs * 3
+
+    # --- Shimmer metrics ---
+    rms = librosa.feature.rms(y=y)[0]
+    shimmer = np.mean(np.abs(np.diff(rms))) / np.mean(rms)
+    shimmer_db = 20 * np.log10(np.mean(rms))
+    APQ3 = np.std(rms[:3]) if len(rms) > 3 else np.std(rms)
+    APQ5 = np.std(rms[:5]) if len(rms) > 5 else np.std(rms)
+    APQ = np.std(rms)
+    DDA = APQ3 * 3
+
+    # --- Harmonic to Noise Ratio (HNR) ---
+    S = librosa.stft(y)
+    harm, noise = librosa.decompose.hpss(S)
+    harm_audio = librosa.istft(harm)
+    noise_audio = librosa.istft(noise)
+    HNR = np.mean(harm_audio**2) / (np.mean(noise_audio**2) + 1e-6)
+
+    # --- Nonlinear features ---
+    NHR = np.mean(noise_audio**2) / (np.mean(harm_audio**2) + 1e-6)
+    RPDE = np.var(f0)
+    DFA = np.mean(np.abs(np.diff(rms)))
+
+    # --- Additional nonlinear features to match dataset ---
+    spread1 = np.mean(np.diff(f0)) if len(f0) > 1 else 0
+    spread2 = np.var(np.diff(f0)) if len(f0) > 1 else 0
+    D2 = np.std(f0)
+    PPE = np.var(np.diff(f0)) / mean_F0
+
+    # Return EXACT feature order (22)
+    return np.array([
+        mean_F0, max_F0, min_F0, jitter_percent, jitter_abs,
+        RAP, PPQ, DDP, shimmer, shimmer_db, APQ3, APQ5, APQ,
+        DDA, NHR, HNR, RPDE, DFA, spread1, spread2, D2, PPE
+    ])
+
+
+# ---------------------------------------------------------
+# 6. LOAD AUDIO
+# ---------------------------------------------------------
+
+audio_path = r"C:\Users\noor_\Downloads\AH_545812844-DFBCDA22-CADB-444A-9623-16A39D45E9E7.wav"
+
+# Convert to WAV if needed
+audio = AudioSegment.from_file(audio_path)
+audio.export("audio.wav", format="wav")
+
+
+# ---------------------------------------------------------
+# 7. EXTRACT FEATURES & PREDICT
+# ---------------------------------------------------------
+
+features = extract_voice_features("audio.wav").reshape(1, -1)
+features_scaled = scaler.transform(features)
+
+prediction = model.predict(features_scaled)[0]
+probability = model.predict_proba(features_scaled)[0][1]
+
+print("\n------------------ RESULT ------------------")
+print("Prediction (1 = Parkinson's, 0 = Healthy):", prediction)
+print("Probability of Parkinson's:", probability)
