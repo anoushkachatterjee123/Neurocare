@@ -522,7 +522,7 @@
         "\n",
         "\n",
         "# Convert to WAV if needed\n",
-        "features=extract_voice_ffeatures = extract_voice_features(audio_file).reshape(1, -1)\n",
+        "features=extract_voice_features = extract_voice_features(audio_file).reshape(1, -1)\n",
         "features_scaled = scaler.transform(features)\n",
         "\n",
         "\n",
