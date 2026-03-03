@@ -20,9 +20,11 @@ y = df['status']
 # ---------------------------------------------------------
 # 2. SCALE
 # ---------------------------------------------------------
-scaler = StandardScaler()
-X_scaled = scaler.fit_transform(X)
+X_train, X_test, y_train, y_test = train_test_split(X, y)
 
+scaler = StandardScaler()
+X_train_scaled = scaler.fit_transform(X_train)
+X_test_scaled = scaler.transform(X_test)
 
 # ---------------------------------------------------------
 # 3. TRAIN/TEST SPLIT
@@ -55,6 +57,8 @@ def extract_voice_features(audio_file):
         y, fmin=50, fmax=400
     )
     f0 = f0[~np.isnan(f0)]
+    if len(f0) == 0:
+        return np.zeros(22)
     mean_F0 = np.mean(f0)
     max_F0 = np.max(f0)
     min_F0 = np.min(f0)
