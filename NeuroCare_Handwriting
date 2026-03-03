@@ -105,7 +105,7 @@ train_datagen = ImageDataGenerator(
     height_shift_range=0.2,
     shear_range=0.2,
     zoom_range=0.2,
-    horizontal_flip=True,
+    horizontal_flip=False,
     fill_mode='nearest'
 )
 
@@ -166,7 +166,8 @@ def create_transfer_learning_model(input_shape=(IMG_SIZE, IMG_SIZE, 3), model_na
         base_model = EfficientNetB0(weights='imagenet', include_top=False, input_shape=input_shape)
     
     # Freeze base model layers
-    base_model.trainable = False
+    for layer in base_model.layers[-30:]:
+        layer.trainable = True
     
     model = models.Sequential([
         base_model,
