@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import pickle
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LogisticRegression
@@ -30,6 +31,8 @@ model.fit(X_train, y_train)
 y_pred = model.predict(X_test)
 accuracy = accuracy_score(y_test, y_pred)
 print("Accuracy:", accuracy)
+with open("tremor_model.pkl", "wb") as f:
+    pickle.dump({"model": model, "scaler": scaler}, f)
 def predict_parkinsons_probability(tremor_data):
       tremor_data = np.array(tremor_data).reshape(1, -1)
       tremor_data = scaler.transform(tremor_data)
@@ -38,3 +41,4 @@ def predict_parkinsons_probability(tremor_data):
 example_patient=[3.5,2.0,1.5,2.8,1.0,3.2,2]
 probability = predict_parkinsons_probability(example_patient)
 print(f"Probability of Parkinson's: {probability:.2f}")
+
