@@ -6,6 +6,7 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import classification_report, confusion_matrix, roc_auc_score, roc_curve
 import matplotlib.pyplot as plt
 import seaborn as sns
+from sklearn.model_selection import cross_val_score
 
 # Load the dataset
 # Replace 'parkinsons_data.csv' with your actual file path
@@ -38,10 +39,6 @@ X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.2, random_state=42, stratify=y
 )
 
-# Scale the features
-scaler = StandardScaler()
-X_train_scaled = scaler.fit_transform(X_train)
-X_test_scaled = scaler.transform(X_test)
 
 # Train Random Forest Classifier
 model = RandomForestClassifier(
@@ -51,11 +48,11 @@ model = RandomForestClassifier(
     class_weight='balanced'
 )
 
-model.fit(X_train_scaled, y_train)
+model.fit(X_train, y_train)
 
 # Make predictions
-y_pred = model.predict(X_test_scaled)
-y_pred_proba = model.predict_proba(X_test_scaled)
+y_pred = model.predict(X_test)
+y_pred_proba = model.predict_proba(X_test)
 
 # Evaluation
 print("\n" + "="*50)
@@ -99,6 +96,15 @@ axes[0, 1].set_ylabel('True Positive Rate')
 axes[0, 1].set_title('ROC Curve')
 axes[0, 1].legend()
 axes[0, 1].grid(True)
+
+
+cv_scores = cross_val_score(
+    model,
+    X,
+    y,
+    cv=5,
+    scoring='roc_auc'
+)
 
 # 3. Feature Importance
 top_features = feature_importance.head(15)
@@ -215,3 +221,5 @@ feature_names = model_data['feature_names']
 new_data = {...} # Your input features
 result = predict_parkinsons(new_data, model, scaler, feature_names)
 print(result)
+print("Cross-validation AUC scores:", cv_scores)
+print("Mean CV AUC:", cv_scores.mean())
